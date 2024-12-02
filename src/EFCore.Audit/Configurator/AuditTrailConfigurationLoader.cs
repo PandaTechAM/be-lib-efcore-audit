@@ -2,7 +2,7 @@
 
 namespace EFCore.Audit.Configurator;
 
-public static class AuditTrailConfigurationLoader
+internal static class AuditTrailConfigurationLoader
 {
    public static AuditTrailConfigurator LoadFromAssemblies(params Assembly[] assemblies)
    {
@@ -17,7 +17,7 @@ public static class AuditTrailConfigurationLoader
                                             BaseType.IsGenericType: true
                                          } &&
                                          t.BaseType.GetGenericTypeDefinition() ==
-                                         typeof(AbstractAuditTrailConfigurator<>));
+                                         typeof(AuditTrailConfigurator<>));
 
          foreach (var type in types)
          {

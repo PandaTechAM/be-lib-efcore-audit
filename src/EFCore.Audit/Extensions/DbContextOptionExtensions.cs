@@ -1,17 +1,15 @@
-﻿using EFCore.Audit.Configurator;
-using EFCore.Audit.Interceptors;
+﻿using EFCore.Audit.Interceptors;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EFCore.Audit.Extensions;
 
 public static class DbContextOptionExtensions
 {
-   public static DbContextOptionsBuilder AddAuditTrailInterceptors(this DbContextOptionsBuilder optionsBuilder, IServiceProvider serviceProvider)
+   public static DbContextOptionsBuilder AddAuditTrailInterceptors(this DbContextOptionsBuilder optionsBuilder, IServiceProvider sp)
    {
-      var auditTrailConfigurator = serviceProvider.GetRequiredService<AuditTrailConfigurator>();
-      optionsBuilder.AddInterceptors(new SaveChangesAuditorInterceptor(auditTrailConfigurator));
-      optionsBuilder.AddInterceptors(new TransactionAuditorInterceptor(auditTrailConfigurator));
+      var httpContextAccessor = sp.GetHttpAccessor();
+      optionsBuilder.AddInterceptors(new SaveChangesAuditorInterceptor(httpContextAccessor));   
+      optionsBuilder.AddInterceptors(new TransactionAuditorInterceptor(httpContextAccessor));
       return optionsBuilder;
    }
 }

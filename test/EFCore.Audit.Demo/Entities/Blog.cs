@@ -14,13 +14,19 @@ public class Blog
    public required byte[] EncryptedKey { get; set; }
 }
 
-public class BlogAuditTrailConfiguration : AbstractAuditTrailConfigurator<Blog>
+public class BlogAuditTrailConfiguration : AuditTrailConfigurator<Blog>
 {
    public BlogAuditTrailConfiguration()
    {
-      SetReadPermission("AdminPermission");
+      SetReadPermission(Permission.UserPermission);
       WriteAuditTrailOnEvents(AuditActionType.Create, AuditActionType.Update, AuditActionType.Delete);
 
       RuleFor(s => s.EncryptedKey).Transform(Convert.ToBase64String);
    }
+}
+
+public enum Permission
+{
+   AdminPermission,
+   UserPermission
 }

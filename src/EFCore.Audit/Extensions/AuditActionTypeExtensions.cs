@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EFCore.Audit.Extensions;
 
-internal static class ChangeTrackerExtensions
+internal static class AuditActionTypeExtensions
 {
    public static AuditActionType ToAuditActionType(this EntityState entityState)
    {

@@ -1,31 +1,47 @@
 ﻿using System.Data.Common;
-using EFCore.Audit.Configurator;
-using EFCore.Audit.Services;
+using EFCore.Audit.Extensions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace EFCore.Audit.Interceptors;
 
-public class TransactionAuditorInterceptor(AuditTrailConfigurator auditTrailConfigurator) : DbTransactionInterceptor
+public class TransactionAuditorInterceptor(IHttpContextAccessor contextAccessor) : DbTransactionInterceptor
 {
-   public override async Task TransactionCommittedAsync(DbTransaction transaction,
+   public override Task TransactionCommittedAsync(DbTransaction transaction,
       TransactionEndEventData eventData,
       CancellationToken cancellationToken = default)
    {
       if (eventData.Context?.Database.CurrentTransaction is not null)
       {
-         AuditTrailTrackingHelper.UpdateTrackedData(eventData.Context);
-         AuditTrailTrackingHelper.PublishAuditTrailEventData(eventData.Context.ContextId.InstanceId, auditTrailConfigurator);
+         var auditTrailTrackingService = contextAccessor.GetAuditTrailTrackingService();
+         if (auditTrailTrackingService is null)
+         {
+            base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
+            return Task.CompletedTask;
+
+         }
+
+         auditTrailTrackingService.UpdateTrackedData();
+         auditTrailTrackingService.PublishAuditTrailEventData();
       }
 
-      await base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
+      base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
+      return Task.CompletedTask;
    }
 
    public override void TransactionCommitted(DbTransaction transaction, TransactionEndEventData eventData)
    {
       if (eventData.Context?.Database.CurrentTransaction is not null)
       {
-         AuditTrailTrackingHelper.UpdateTrackedData(eventData.Context);
-         AuditTrailTrackingHelper.PublishAuditTrailEventData(eventData.Context.ContextId.InstanceId, auditTrailConfigurator);
+         var auditTrailTrackingService = contextAccessor.GetAuditTrailTrackingService();
+         if (auditTrailTrackingService is null)
+         {
+            base.TransactionCommitted(transaction, eventData);
+            return;
+         }
+
+         auditTrailTrackingService.UpdateTrackedData();
+         auditTrailTrackingService.PublishAuditTrailEventData();
       }
 
       base.TransactionCommitted(transaction, eventData);

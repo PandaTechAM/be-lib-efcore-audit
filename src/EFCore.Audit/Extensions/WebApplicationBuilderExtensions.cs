@@ -10,11 +10,16 @@ public static class WebApplicationBuilderExtensions
 {
    public static WebApplicationBuilder AddAuditTrail(this WebApplicationBuilder builder, params Assembly[] assemblies)
    {
+      if (assemblies.Length == 0)
+      {
+         assemblies = [Assembly.GetCallingAssembly()];
+      }
+      
       var auditTrailConfigurator = AuditTrailConfigurationLoader.LoadFromAssemblies(assemblies);
 
+      builder.Services.AddHttpContextAccessor();
       builder.Services.AddSingleton(auditTrailConfigurator);
-
-      builder.Services.AddHostedService<CleanupHostedService>();
+      builder.Services.AddScoped<AuditTrailTrackingService>();
       return builder;
    }
 }

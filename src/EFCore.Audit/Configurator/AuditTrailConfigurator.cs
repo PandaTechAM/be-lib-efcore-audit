@@ -1,15 +1,14 @@
-﻿using EFCore.Audit.Models;
+﻿using System.Linq.Expressions;
+using EFCore.Audit.Models;
 
 namespace EFCore.Audit.Configurator;
-
-using System.Linq.Expressions;
 
 public abstract class AbstractAuditTrailConfigurator
 {
    public abstract EntityAuditConfiguration Build();
 }
 
-public abstract class AbstractAuditTrailConfigurator<TEntity> : AbstractAuditTrailConfigurator where TEntity : class
+public abstract class AuditTrailConfigurator<TEntity> : AbstractAuditTrailConfigurator where TEntity : class
 {
    private readonly EntityAuditConfiguration _entityConfig = new();
 
@@ -26,24 +25,23 @@ public abstract class AbstractAuditTrailConfigurator<TEntity> : AbstractAuditTra
       return new PropertyConfigurator<TEntity, TProperty>(_entityConfig.Properties[propertyName]);
    }
 
-   protected AbstractAuditTrailConfigurator<TEntity> SetReadPermission(object permission)
+   protected AuditTrailConfigurator<TEntity> SetReadPermission(object permission)
    {
       _entityConfig.PermissionToRead = permission;
       return this;
    }
 
-   protected AbstractAuditTrailConfigurator<TEntity> SetServiceName(string serviceName)
+   protected AuditTrailConfigurator<TEntity> SetServiceName(string serviceName)
    {
       _entityConfig.ServiceName = serviceName;
       return this;
    }
 
-   protected AbstractAuditTrailConfigurator<TEntity> WriteAuditTrailOnEvents(params AuditActionType[] auditActions)
+   protected AuditTrailConfigurator<TEntity> WriteAuditTrailOnEvents(params AuditActionType[] auditActions)
    {
       _entityConfig.AuditActions = auditActions;
       return this;
    }
-
    private static string GetPropertyName<TProperty>(Expression<Func<TEntity, TProperty>> propertyExpression)
    {
       if (propertyExpression.Body is MemberExpression memberExpression)
@@ -58,6 +56,12 @@ public class PropertyConfigurator<TEntity, TProperty>(PropertyAuditConfiguration
    public PropertyConfigurator<TEntity, TProperty> Ignore()
    {
       propertyConfig.Ignore = true;
+      return this;
+   }
+   
+   public PropertyConfigurator<TEntity, TProperty> Rename(string newName)
+   {
+      propertyConfig.Name = newName;
       return this;
    }
 

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using EFCore.Audit.Configurator;
 using EFCore.Audit.Extensions;
 using EFCore.Audit.Models;
@@ -7,11 +6,11 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace EFCore.Audit.Services;
 
-internal static class AuditTrailTrackingHelper
+internal class AuditTrailTrackingService(AuditTrailConfigurator configurator)
 {
-   private static readonly ConcurrentDictionary<Guid, AuditTrackingData> PendingTrackedEntities = [];
+   private readonly List<AuditedEntity> _entities = [];
 
-   internal static void AddTrackedData(DbContext? dbContext)
+   internal void AddTrackedData(DbContext? dbContext)
    {
       if (dbContext is null)
       {
@@ -22,10 +21,6 @@ internal static class AuditTrailTrackingHelper
                              .Entries()
                              .ToList();
 
-      var auditTrackData = PendingTrackedEntities.GetOrAdd(
-         dbContext.ContextId.InstanceId,
-         _ => new AuditTrackingData()
-      );
 
       foreach (var entry in entries)
       {
@@ -36,81 +31,51 @@ internal static class AuditTrailTrackingHelper
             ActionType = entry.State.ToAuditActionType(),
             Name = entityType.Name,
 
-            PrimaryKeyValue = entry.GetPrimaryKeyValue(),
+            PrimaryKeyValue = GetPrimaryKeyValue(entry),
             Type = entityType
          };
 
          foreach (var property in entry.Properties)
          {
-            auditedEntity.TrackedProperty[property.Metadata.Name] = property.CurrentValue;
+            auditedEntity.PropertyOriginalValues[property.Metadata.Name] = property.OriginalValue;
+            auditedEntity.PropertyCurrentValues[property.Metadata.Name] = property.CurrentValue;
          }
 
-         lock (auditTrackData) //todo Review if this is correct
-         {
-            auditTrackData.Entities.Add(auditedEntity);
-         }
+         _entities.Add(auditedEntity);
       }
    }
 
-   internal static void UpdateTrackedData(DbContext? dbContext) //todo Do I need lock here
+   internal void UpdateTrackedData()
    {
-      if (dbContext is null)
+      foreach (var entity in _entities)
       {
-         return;
-      }
-
-      if (!PendingTrackedEntities.TryGetValue(dbContext.ContextId.InstanceId, out var trackingData))
-      {
-         return;
-      }
-
-      foreach (var entity in trackingData.Entities)
-      {
-         entity.PrimaryKeyValue = entity.Entry.GetPrimaryKeyValue();
+         entity.PrimaryKeyValue = GetPrimaryKeyValue(entity.Entry);
 
          foreach (var property in entity.Entry.Properties)
          {
-            entity.TrackedProperty[property.Metadata.Name] = property.CurrentValue;
+            entity.PropertyCurrentValues[property.Metadata.Name] = property.CurrentValue;
          }
       }
    }
 
-   internal static void ClearOutdatedTrackedEntities()
+   internal void PublishAuditTrailEventData()
    {
-      var expirationTime = DateTime.Now.AddMinutes(-5);
+      var auditTrailEventData = ProcessTrackedData();
 
-      foreach (var kvp in PendingTrackedEntities)
-      {
-         if (kvp.Value.TrackedAt < expirationTime)
-         {
-            PendingTrackedEntities.TryRemove(kvp.Key, out _);
-         }
-      }
-   }
-
-
-   internal static void PublishAuditTrailEventData(Guid contextInstanceId, AuditTrailConfigurator configurator)
-   {
-      var auditTrailEventData = ProcessTrackedData(contextInstanceId, configurator);
-
-      if (auditTrailEventData is null || auditTrailEventData.Entities.Count == 0)
+      if (auditTrailEventData.Entities.Count == 0)
       {
          return;
       }
 
       AuditEventBroker.Publish(auditTrailEventData);
+      _entities.Clear();
    }
 
-   private static AuditTrailEventData? ProcessTrackedData(Guid contextInstanceId, AuditTrailConfigurator configurator)
+   private AuditTrailEventData ProcessTrackedData()
    {
-      if (!PendingTrackedEntities.TryGetValue(contextInstanceId, out var auditTrackData))
-      {
-         return null;
-      }
-
       var transformedEntities = new List<AuditTrailEventEntity>();
 
-      foreach (var entity in auditTrackData.Entities)
+      foreach (var entity in _entities)
       {
          if (!entity.ActionType.IsInAuditScope())
          {
@@ -129,9 +94,11 @@ internal static class AuditTrailTrackingHelper
             continue;
          }
 
+         RemoveUnchangedProperties(entity);
+
          Dictionary<string, object?> transformedProperties = new();
 
-         foreach (var (propertyName, propertyValue) in entity.TrackedProperty)
+         foreach (var (propertyName, propertyValue) in entity.PropertyCurrentValues)
          {
             if (entityConfig.Properties.TryGetValue(propertyName, out var propertyConfig))
             {
@@ -140,9 +107,11 @@ internal static class AuditTrailTrackingHelper
                   continue;
                }
 
+               var transformedPropertyName = propertyConfig.Name ?? propertyName;
+
                var transformedValue = propertyConfig.Transform?.Invoke(propertyValue) ?? propertyValue;
 
-               transformedProperties.Add(propertyName, transformedValue);
+               transformedProperties.Add(transformedPropertyName, transformedValue);
             }
             else
             {
@@ -160,16 +129,31 @@ internal static class AuditTrailTrackingHelper
          transformedEntities.Add(transformedEntity);
       }
 
-      ClearTrackedEntitiesByInstanceId(contextInstanceId);
       return new AuditTrailEventData(transformedEntities);
    }
 
-   private static void ClearTrackedEntitiesByInstanceId(Guid instanceId)
+   private static void RemoveUnchangedProperties(AuditedEntity entity)
    {
-      PendingTrackedEntities.TryRemove(instanceId, out _);
+      if (entity.ActionType is AuditActionType.Create)
+      {
+         return;
+      }
+      var propertiesToRemove = entity.PropertyCurrentValues
+                                     .Where(kv =>
+                                        entity.PropertyOriginalValues.TryGetValue(kv.Key, out var originalValue) &&
+                                        Equals(originalValue, kv.Value))
+                                     .Select(kv => kv.Key)
+                                     .ToList();
+
+      foreach (var property in propertiesToRemove)
+      {
+         entity.PropertyOriginalValues.Remove(property);
+         entity.PropertyCurrentValues.Remove(property);
+      }
    }
 
-   private static string GetPrimaryKeyValue(this EntityEntry entry)
+
+   private static string GetPrimaryKeyValue(EntityEntry entry)
    {
       return string.Join("_",
          entry.Properties
