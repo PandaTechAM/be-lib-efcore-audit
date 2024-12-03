@@ -157,7 +157,7 @@ Below is a simplified example of how your `Program.cs` file might look:
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// Register audit trail configurations with the consumer class
+// Register audit trail configurations with the consumer class before adding the DbContext
 builder.Services.AddAuditTrail<AuditTrailConsumer>(typeof(Program).Assembly);
 
 // Register DbContext with audit trail interceptors
@@ -168,6 +168,11 @@ var app = builder.Build();
 
 app.Run();
 ```
+
+> **Note:** The `AddAuditTrail` method registers the audit trail configurations and `HttpContextAccessor` so it should
+> be always **before** the `AddDbContext` method. In case of using `AddDbContext` before registration make sure to
+> register the `HttpContextAccessor` manually by using `builder.Services.AddHttpContextAccessor()` method in
+`Program.cs`.
 
 ### 6. Audit Trail Event Data
 
