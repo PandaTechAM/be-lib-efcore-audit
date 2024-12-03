@@ -27,31 +27,31 @@ public class SaveChangesAuditorInterceptor(IHttpContextAccessor contextAccessor)
       return base.SavingChangesAsync(eventData, result, cancellationToken);
    }
 
-   public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+   public override async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
       int result,
       CancellationToken cancellationToken = default)
    {
       if (eventData.Context is null)
       {
-         return base.SavedChangesAsync(eventData, result, cancellationToken);
+         return await base.SavedChangesAsync(eventData, result, cancellationToken);
       }
 
       var auditTrailTrackingService = contextAccessor.GetAuditTrailTrackingService();
 
       if (auditTrailTrackingService is null)
       {
-         return base.SavedChangesAsync(eventData, result, cancellationToken);
+         return await base.SavedChangesAsync(eventData, result, cancellationToken);
       }
 
       auditTrailTrackingService.UpdateTrackedData();
 
       if (eventData.Context.Database.CurrentTransaction is not null)
       {
-         return base.SavedChangesAsync(eventData, result, cancellationToken);
+         return await base.SavedChangesAsync(eventData, result, cancellationToken);
       }
 
-      auditTrailTrackingService.PublishAuditTrailEventData();
-      return base.SavedChangesAsync(eventData, result, cancellationToken);
+      await auditTrailTrackingService.PublishAuditTrailEventData();
+      return await base.SavedChangesAsync(eventData, result, cancellationToken);
    }
 
    public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
@@ -95,7 +95,7 @@ public class SaveChangesAuditorInterceptor(IHttpContextAccessor contextAccessor)
          return base.SavedChanges(eventData, result);
       }
 
-      auditTrailTrackingService.PublishAuditTrailEventData();
+      auditTrailTrackingService.PublishAuditTrailEventData().GetAwaiter().GetResult();
 
       return base.SavedChanges(eventData, result);
    }

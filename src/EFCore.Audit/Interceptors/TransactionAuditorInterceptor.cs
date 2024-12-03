@@ -7,7 +7,7 @@ namespace EFCore.Audit.Interceptors;
 
 public class TransactionAuditorInterceptor(IHttpContextAccessor contextAccessor) : DbTransactionInterceptor
 {
-   public override Task TransactionCommittedAsync(DbTransaction transaction,
+   public override async Task TransactionCommittedAsync(DbTransaction transaction,
       TransactionEndEventData eventData,
       CancellationToken cancellationToken = default)
    {
@@ -16,17 +16,16 @@ public class TransactionAuditorInterceptor(IHttpContextAccessor contextAccessor)
          var auditTrailTrackingService = contextAccessor.GetAuditTrailTrackingService();
          if (auditTrailTrackingService is null)
          {
-            base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
-            return Task.CompletedTask;
+            await base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
+            return;
 
          }
 
          auditTrailTrackingService.UpdateTrackedData();
-         auditTrailTrackingService.PublishAuditTrailEventData();
+         await auditTrailTrackingService.PublishAuditTrailEventData();
       }
 
-      base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
-      return Task.CompletedTask;
+      await base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
    }
 
    public override void TransactionCommitted(DbTransaction transaction, TransactionEndEventData eventData)
@@ -41,7 +40,7 @@ public class TransactionAuditorInterceptor(IHttpContextAccessor contextAccessor)
          }
 
          auditTrailTrackingService.UpdateTrackedData();
-         auditTrailTrackingService.PublishAuditTrailEventData();
+         auditTrailTrackingService.PublishAuditTrailEventData().GetAwaiter().GetResult();
       }
 
       base.TransactionCommitted(transaction, eventData);

@@ -1,12 +1,14 @@
 using EFCore.Audit.Configurator;
 using EFCore.Audit.Extensions;
 using EFCore.Audit.Models;
+using EFCore.Audit.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace EFCore.Audit.Services;
+namespace EFCore.Audit.Services.Implementations;
 
-internal class AuditTrailTrackingService(AuditTrailConfigurator configurator)
+internal class AuditTrailTrackingService(AuditTrailConfigurator configurator, IAuditTrailConsumer consumer)
 {
    private readonly List<AuditedEntity> _entities = [];
 
@@ -58,7 +60,7 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator)
       }
    }
 
-   internal void PublishAuditTrailEventData()
+   internal async Task PublishAuditTrailEventData()
    {
       var auditTrailEventData = ProcessTrackedData();
 
@@ -67,7 +69,7 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator)
          return;
       }
 
-      AuditEventBroker.Publish(auditTrailEventData);
+      await consumer.ConsumeAuditTrailAsync(auditTrailEventData);
       _entities.Clear();
    }
 
@@ -138,6 +140,7 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator)
       {
          return;
       }
+
       var propertiesToRemove = entity.PropertyCurrentValues
                                      .Where(kv =>
                                         entity.PropertyOriginalValues.TryGetValue(kv.Key, out var originalValue) &&

@@ -8,7 +8,7 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddAuditTrail(typeof(Program).Assembly);
+builder.AddAuditTrail<AuditTrailConsumer>(typeof(Program).Assembly);
 
 builder.AddPostgresContext<PostgresContext>(
    "Server=localhost;Port=5432;Database=audit_test;User Id=test;Password=test;Pooling=true;");
@@ -23,11 +23,5 @@ app.MapOpenApi();
 app.MapScalarApiReference();
 app.EnsureCleanDb<PostgresContext>();
 app.AddDemoEndpoints();
-
-AuditTrailSubscriber.ConfigureAuditTrailHandler(auditTrailEventData =>
-{
-   Console.WriteLine("Subscribed to the event");
-   Console.WriteLine(JsonSerializer.Serialize(auditTrailEventData));
-});
 
 app.Run();
