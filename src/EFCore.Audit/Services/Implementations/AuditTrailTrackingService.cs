@@ -27,6 +27,12 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator, IA
       foreach (var entry in entries)
       {
          var entityType = entry.Entity.GetType();
+
+         if (configurator.GetEntityConfiguration(entityType) is null)
+         {
+            continue;
+         }
+         
          var auditedEntity = new AuditedEntity
          {
             Entry = entry,
@@ -84,13 +90,8 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator, IA
             continue;
          }
 
-         var entityConfig = configurator.GetEntityConfiguration(entity.Type);
-
-         if (entityConfig is null)
-         {
-            continue;
-         }
-
+         var entityConfig = configurator.GetEntityConfiguration(entity.Type)!;
+         
          if (entityConfig.AuditActions is not null && !entityConfig.AuditActions.Contains(entity.ActionType))
          {
             continue;
