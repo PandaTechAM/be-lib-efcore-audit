@@ -1,4 +1,6 @@
 ﻿using EFCore.Audit.Services;
+using EFCore.Audit.Services.Implementations;
+using EFCore.Audit.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,7 +12,7 @@ internal static class HttpAccessorExtensions
    {
       return sp.GetRequiredService<IHttpContextAccessor>();
    }
-   
+
    public static AuditTrailTrackingService? GetAuditTrailTrackingService(this IHttpContextAccessor contextAccessor)
    {
       return contextAccessor.HttpContext?.RequestServices.GetRequiredService<AuditTrailTrackingService>();

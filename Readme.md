@@ -24,7 +24,7 @@ dotnet add package Pandatech.EFCore.Audit
 
 ## Integration
 
-To integrate `Pandatech.EFCore.Audit` into your project,, follow these steps:
+To integrate `Pandatech.EFCore.Audit` into your project, follow these steps:
 
 ### 1. Configure DbContext
 
@@ -131,42 +131,40 @@ public static WebApplicationBuilder AddPostgresContext<TContext>(this WebApplica
 }
 ```
 
-### 4. Set Up the Audit Trail Subscriber
+### 4. Set Up the Audit Trail Consumer
 
-Configure how you want to handle audit trail events:
+To handle audit trail events, create a consumer class that inherits from `IAuditTrailConsumer` and implements the
+`ConsumeAuditTrailAsync` method. Implement this method to process audit trail events according to your application's
+requirements — for example, logging the events, sending them to an external service, or storing them in a database.
+
+Here is an example implementation that serializes the event data to JSON and writes it to the console:
 
 ```csharp
-AuditTrailSubscriber.ConfigureAuditTrailHandler(auditTrailEventData =>
+public class AuditTrailConsumer : IAuditTrailConsumer
 {
-    // Implement your custom logic here
-    Console.WriteLine("Audit Trail Event Received:");
-    Console.WriteLine(JsonSerializer.Serialize(auditTrailEventData));
-});
+   public Task ConsumeAuditTrailAsync(AuditTrailEventData auditTrailEventData)
+   {
+      Console.WriteLine(JsonSerializer.Serialize(auditTrailEventData));
+      return Task.CompletedTask;
+   }
+}
 ```
 
-### 5. Example `Program.cs`
+### 5. `Program.cs` Registration and Configuration
 
-Below is a simplified example of how your Program.cs might look:
+Below is a simplified example of how your `Program.cs` file might look:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// Register audit trail configurations
-builder.Services.AddAuditTrail(typeof(Program).Assembly);
+// Register audit trail configurations with the consumer class
+builder.Services.AddAuditTrail<AuditTrailConsumer>(typeof(Program).Assembly);
 
 // Register DbContext with audit trail interceptors
 builder.AddPostgresContext<PostgresContext>(
     "Server=localhost;Port=5432;Database=audit_test;User Id=test;Password=test;Pooling=true;");
 
 var app = builder.Build();
-
-// Configure audit trail event handling
-AuditTrailSubscriber.ConfigureAuditTrailHandler(auditTrailEventData =>
-{
-    // Implement your custom logic here
-    Console.WriteLine("Audit Trail Event Received:");
-    Console.WriteLine(JsonSerializer.Serialize(auditTrailEventData));
-});
 
 app.Run();
 ```
