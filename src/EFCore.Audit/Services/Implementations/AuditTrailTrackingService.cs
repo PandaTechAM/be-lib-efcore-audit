@@ -121,7 +121,8 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator, IA
             }
          }
 
-         var transformedEntity = new AuditTrailEventEntity(entityConfig.ServiceName,
+         var transformedEntity = new AuditTrailEventEntity(entity.Entry,
+            entityConfig.ServiceName,
             entity.ActionType,
             entity.Name,
             entityConfig.PermissionToRead,

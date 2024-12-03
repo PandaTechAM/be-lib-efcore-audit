@@ -177,6 +177,7 @@ The audit trail event data is represented by the following classes:
 public record AuditTrailEventData(List<AuditTrailEventEntity> Entities);
 
 public record AuditTrailEventEntity(
+    EntityEntry Entry,
     string? ServiceName,
     AuditActionType ActionType,
     string EntityName,
@@ -187,6 +188,7 @@ public record AuditTrailEventEntity(
 
 - AuditTrailEventData: Contains a list of `AuditTrailEventEntity` objects.
 - AuditTrailEventEntity: Represents an audited entity with its associated data.
+    - Entry: The `EntityEntry` object containing the entity data from `DbContext`.
     - ServiceName: The name of the service where the change originated. Configured manually using `SetServiceName`.
     - ActionType: The type of action performed (`Create`, `Update`, `Delete`).
     - EntityName: The name of the entity.
