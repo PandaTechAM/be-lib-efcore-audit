@@ -10,6 +10,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.1" />
+        <PackageReference Include="Pandatech.Crypto" Version="4.1.1" />
         <PackageReference Include="Scalar.AspNetCore" Version="1.2.45" />
     </ItemGroup>
 

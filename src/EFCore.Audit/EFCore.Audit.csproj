@@ -8,13 +8,13 @@
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
         <Authors>Pandatech</Authors>
         <Copyright>MIT</Copyright>
-        <Version>1.1.3</Version>
+        <Version>1.1.4</Version>
         <PackageId>Pandatech.EFCore.Audit</PackageId>
         <Title>Pandatech.EFCore.Audit</Title>
         <PackageTags>Pandatech;library;EFCore;Audit;DbContext;ChangeTracker;audit-trail</PackageTags>
         <Description>Pandatech.EFCore.Audit is a powerful and configurable library designed to collect audit trail data from the EF Core DbContext change tracker. It is built with scalability and professional-grade extensibility in mind.</Description>
         <RepositoryUrl>https://github.com/PandaTechAM/be-lib-efcore-audit</RepositoryUrl>
-        <PackageReleaseNotes>Doc update</PackageReleaseNotes>
+        <PackageReleaseNotes>null value bug fix</PackageReleaseNotes>
     </PropertyGroup>
 
     <ItemGroup>

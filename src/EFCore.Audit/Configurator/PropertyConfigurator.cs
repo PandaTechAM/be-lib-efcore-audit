@@ -1,4 +1,4 @@
-using EFCore.Audit.Models;
+﻿using EFCore.Audit.Models;
 
 namespace EFCore.Audit.Configurator;
 
@@ -9,7 +9,7 @@ public class PropertyConfigurator<TEntity, TProperty>(PropertyAuditConfiguration
       propertyConfig.Ignore = true;
       return this;
    }
-   
+
    public PropertyConfigurator<TEntity, TProperty> Rename(string newName)
    {
       propertyConfig.Name = newName;
@@ -20,12 +20,7 @@ public class PropertyConfigurator<TEntity, TProperty>(PropertyAuditConfiguration
    {
       propertyConfig.Transform = value =>
       {
-         if (value is TProperty typedValue)
-         {
-            return transformFunc(typedValue);
-         }
-
-         throw new InvalidCastException($"Cannot cast property value to type {typeof(TProperty).Name}");
+         return transformFunc((TProperty)value!);
       };
 
       return this;
