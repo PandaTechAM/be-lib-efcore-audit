@@ -214,6 +214,6 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
          )
       );
 
-      await auditPublisher.BulkAuditAsync(auditEntries);
+      await auditPublisher.BulkAuditAsync(auditEntries, CancellationToken.None);
    }
 }

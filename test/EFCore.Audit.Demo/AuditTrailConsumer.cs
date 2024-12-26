@@ -9,9 +9,9 @@ namespace EFCore.Audit.Demo;
 
 public class AuditTrailConsumer : IAuditTrailConsumer
 {
-   public Task ConsumeAuditTrailAsync(AuditTrailEventData auditTrailEventData)
+   public Task ConsumeAuditTrailAsync(AuditTrailEventData auditTrailEventData, CancellationToken cancellationToken)
    {
-      var log =AuditTrailEventDataDebug.DebugLog(auditTrailEventData);
+      var log = AuditTrailEventDataDebug.DebugLog(auditTrailEventData);
       Console.WriteLine(log);
       return Task.CompletedTask;
    }

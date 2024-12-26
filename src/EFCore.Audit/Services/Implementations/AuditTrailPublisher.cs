@@ -8,7 +8,7 @@ namespace EFCore.Audit.Services.Implementations;
 internal class AuditTrailPublisher(IAuditTrailConsumer auditTrailConsumer, AuditTrailConfigurator configurator)
    : IAuditTrailPublisher
 {
-   public async Task BulkAuditAsync(List<ManualAuditEntry> auditEntries)
+   public async Task BulkAuditAsync(List<ManualAuditEntry> auditEntries, CancellationToken cancellationToken)
    {
       if (auditEntries.Count == 0)
       {
@@ -57,6 +57,6 @@ internal class AuditTrailPublisher(IAuditTrailConsumer auditTrailConsumer, Audit
       }
 
       var eventData = new AuditTrailEventData(transformedEntities);
-      await auditTrailConsumer.ConsumeAuditTrailAsync(eventData);
+      await auditTrailConsumer.ConsumeAuditTrailAsync(eventData, cancellationToken);
    }
 }

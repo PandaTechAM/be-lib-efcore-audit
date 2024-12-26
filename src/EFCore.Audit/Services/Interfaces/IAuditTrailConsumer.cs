@@ -4,5 +4,5 @@ namespace EFCore.Audit.Services.Interfaces;
 
 public interface IAuditTrailConsumer
 {
-   public Task ConsumeAuditTrailAsync(AuditTrailEventData auditTrailEventData);
+   public Task ConsumeAuditTrailAsync(AuditTrailEventData auditTrailEventData, CancellationToken cancellationToken = default);
 }

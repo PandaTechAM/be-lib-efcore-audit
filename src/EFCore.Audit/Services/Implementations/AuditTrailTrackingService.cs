@@ -66,7 +66,7 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator, IA
       }
    }
 
-   internal async Task PublishAuditTrailEventData()
+   internal async Task PublishAuditTrailEventData(CancellationToken cancellationToken)
    {
       var auditTrailEventData = ProcessTrackedData();
 
@@ -75,7 +75,7 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator, IA
          return;
       }
 
-      await consumer.ConsumeAuditTrailAsync(auditTrailEventData);
+      await consumer.ConsumeAuditTrailAsync(auditTrailEventData, cancellationToken);
       _entities.Clear();
    }
 
