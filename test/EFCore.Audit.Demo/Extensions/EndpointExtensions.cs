@@ -14,6 +14,8 @@ public static class EndpointExtensions
          async ([FromServices] Service service) => await service.FailTransactionAsync());
       app.MapGet("/CreatePostTransaction",
          async ([FromServices] Service service) => await service.CreatePostTransaction());
+      app.MapGet("/create-publish",
+         async ([FromServices] Service service) => await service.CreatePublish());
 
       return app;
    }

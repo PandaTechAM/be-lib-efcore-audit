@@ -12,7 +12,8 @@
 ## Limitations
 
 - Not atomic: Being event-based, there is a risk of losing audit data in edge cases.
-- Does not work with untracked operations like `AsNoTracking`, `ExecuteUpdate`, `ExecuteDelete`, etc.
+- Does not work with untracked operations like `AsNoTracking`, `ExecuteUpdate`, `ExecuteDelete`, etc. For
+  such scenarios, use the new manual bulk audit feature described below.
 
 ## Installation
 
@@ -201,6 +202,112 @@ public record AuditTrailEventEntity(
       `SetReadPermission`.
     - PrimaryKeyValue: The primary key value(s) of the entity.
     - TrackedProperties: A dictionary containing the tracked properties and their values.
+
+### 7. Manual Bulk Audit
+
+If you perform operations outside EF Core’s change tracker (e.g. `AsNoTracking`, `ExecuteUpdate()`, raw SQL queries,
+external APIs, etc.), you can still create audit events by manually specifying:
+
+- `AuditActionType` (Create, Update, Delete)
+- Primary key value(s)
+- The dictionary of changed properties relevant to the operation
+
+This is exposed via a single `IAuditTrailPublisher.BulkAuditAsync` method (or similar) that accepts a list of manual
+audit entries. Each entry contains:
+
+```csharp
+public record ManualAuditEntry(
+    Type EntityType,              // The CLR type you're auditing (e.g. Blog, Post)
+    AuditActionType Action,       // Create, Update, or Delete
+    List<AuditEntryDetail> ChangedItems // One or more records to track
+);
+
+public record AuditEntryDetail(
+    List<string> PrimaryKeyIds,          // e.g. ["10"] or ["10","20"] for composite PK
+    Dictionary<string, object?> ChangedProperties // developer-supplied property data
+);
+```
+
+#### Usage Example
+
+```csharp
+public async Task CreatePublish()
+{
+  var posts = new List<Post>();
+
+  var blog = new Blog
+  {
+     Id = 2,
+     Title = "null",
+     CreatedAt = DateTime.UtcNow,
+     BlogType = BlogType.Personal,
+     EncryptedKey = [1, 2, 3]
+  };
+
+  for (var i = 0; i < 10; i++)
+  {
+     var post = new Post
+     {
+        Title = $"Post {i}",
+        Content = $"This is post {i}",
+        Blog = blog
+     };
+
+     posts.Add(post);
+  }
+
+  var auditEntries = new List<ManualAuditEntry>
+  {
+     new(
+        typeof(Blog),
+        AuditActionType.Create,
+        [
+           new AuditEntryDetail(
+              PrimaryKeyIds: [blog.Id.ToString()],
+
+              ChangedProperties: new Dictionary<string, object?>
+              {
+                 [nameof(blog.Id)] = blog.Id,
+                 [nameof(blog.Title)] = blog.Title,
+                 [nameof(blog.CreatedAt)] = blog.CreatedAt,
+                 [nameof(blog.BlogType)] = blog.BlogType,
+                 [nameof(blog.EncryptedKey)] = blog.EncryptedKey
+              }
+           )
+        ]
+     )
+  };
+
+  var postDetails = new List<AuditEntryDetail>();
+  foreach (var p in posts)
+  {
+     postDetails.Add(
+        new AuditEntryDetail(
+           PrimaryKeyIds: [p.Id.ToString()],
+           ChangedProperties: new Dictionary<string, object?>
+           {
+              [nameof(p.Title)] = p.Title,
+              [nameof(p.Content)] = p.Content,
+              [nameof(p.BlogId)] = p.BlogId
+           }
+        )
+     );
+  }
+
+  auditEntries.Add(
+     new ManualAuditEntry(
+        EntityType: typeof(Post),
+        Action: AuditActionType.Create,
+        ChangedItems: postDetails
+     )
+  );
+
+  await auditPublisher.BulkAuditAsync(auditEntries); // IAuditTrailPublisher.BulkAuditAsync
+}
+```
+
+When you call `BulkAuditAsync`, the library will apply any configured transformations (ignore, rename, transform) and
+publish the resulting audit trail event.
 
 ## Notes
 

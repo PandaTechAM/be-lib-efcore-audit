@@ -5,7 +5,7 @@ namespace EFCore.Audit.Models;
 public record AuditTrailEventData(List<AuditTrailEventEntity> Entities);
 
 public record AuditTrailEventEntity(
-   EntityEntry EntityEntry,
+   EntityEntry? EntityEntry,
    string? ServiceName,
    AuditActionType ActionType,
    string Name,

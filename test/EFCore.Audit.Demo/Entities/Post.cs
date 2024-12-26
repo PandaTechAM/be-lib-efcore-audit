@@ -12,12 +12,12 @@ public class Post
    public Blog Blog { get; set; } = null!;
 }
 
-// public class PostAuditConfiguration : AuditTrailConfigurator<Post>
-// {
-//    public PostAuditConfiguration()
-//    {
-//       SetServiceName("Monolith");
-//       RuleFor(s => s.Content).Ignore();
-//       RuleFor(s => s.Title).Rename("TotallyNewTitle");
-//    }
-// }
+public class PostAuditConfiguration : AuditTrailConfigurator<Post>
+{
+   public PostAuditConfiguration()
+   {
+      SetServiceName("Monolith");
+      RuleFor(s => s.Content).Ignore();
+      RuleFor(s => s.Title).Rename("TotallyNewTitle");
+   }
+}
