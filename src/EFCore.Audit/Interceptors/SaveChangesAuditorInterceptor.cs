@@ -50,7 +50,8 @@ public class SaveChangesAuditorInterceptor(IHttpContextAccessor contextAccessor)
          return await base.SavedChangesAsync(eventData, result, cancellationToken);
       }
 
-      await auditTrailTrackingService.PublishAuditTrailEventData();
+
+      await auditTrailTrackingService.PublishAuditTrailEventData(cancellationToken);
       return await base.SavedChangesAsync(eventData, result, cancellationToken);
    }
 
@@ -95,7 +96,16 @@ public class SaveChangesAuditorInterceptor(IHttpContextAccessor contextAccessor)
          return base.SavedChanges(eventData, result);
       }
 
-      auditTrailTrackingService.PublishAuditTrailEventData().GetAwaiter().GetResult();
+      var cancellationToken = CancellationToken.None;
+
+      if (contextAccessor.HttpContext is not null)
+      {
+         cancellationToken = contextAccessor.HttpContext.RequestAborted;
+      }
+
+      auditTrailTrackingService.PublishAuditTrailEventData(cancellationToken)
+                               .GetAwaiter()
+                               .GetResult();
 
       return base.SavedChanges(eventData, result);
    }
