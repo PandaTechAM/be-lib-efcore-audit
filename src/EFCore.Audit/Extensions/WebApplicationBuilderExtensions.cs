@@ -22,6 +22,7 @@ public static class WebApplicationBuilderExtensions
 
       builder.Services.AddHttpContextAccessor();
       builder.Services.AddSingleton(auditTrailConfigurator);
+      builder.Services.AddScoped<IAuditTrailPublisher, AuditTrailPublisher>();
       builder.Services.AddScoped<AuditTrailTrackingService>();
       builder.Services.AddScoped<IAuditTrailConsumer, TConsumer>();
       return builder;

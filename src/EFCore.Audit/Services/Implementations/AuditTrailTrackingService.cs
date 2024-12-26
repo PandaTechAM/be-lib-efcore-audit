@@ -1,10 +1,10 @@
 using EFCore.Audit.Configurator;
 using EFCore.Audit.Extensions;
+using EFCore.Audit.Helpers;
 using EFCore.Audit.Models;
 using EFCore.Audit.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace EFCore.Audit.Services.Implementations;
 
@@ -85,52 +85,33 @@ internal class AuditTrailTrackingService(AuditTrailConfigurator configurator, IA
 
       foreach (var entity in _entities)
       {
-         if (!entity.ActionType.IsInAuditScope())
-         {
-            continue;
-         }
-
-         var entityConfig = configurator.GetEntityConfiguration(entity.Type)!;
-         
-         if (entityConfig.AuditActions is not null && !entityConfig.AuditActions.Contains(entity.ActionType))
+         if (!AuditTrailHelper.ShouldProcessEntity(
+                entity.ActionType,
+                entity.Type,
+                configurator,
+                out var entityConfig))
          {
             continue;
          }
 
          RemoveUnchangedProperties(entity);
 
-         Dictionary<string, object?> transformedProperties = new();
+         var transformedProps = AuditTrailHelper.TransformProperties(
+            entity.PropertyCurrentValues,
+            entityConfig!.Properties
+         );
 
-         foreach (var (propertyName, propertyValue) in entity.PropertyCurrentValues)
-         {
-            if (entityConfig.Properties.TryGetValue(propertyName, out var propertyConfig))
-            {
-               if (propertyConfig.Ignore)
-               {
-                  continue;
-               }
-
-               var transformedPropertyName = propertyConfig.Name ?? propertyName;
-
-               var transformedValue = propertyConfig.Transform?.Invoke(propertyValue) ?? propertyValue;
-
-               transformedProperties.Add(transformedPropertyName, transformedValue);
-            }
-            else
-            {
-               transformedProperties.Add(propertyName, propertyValue);
-            }
-         }
-
-         var transformedEntity = new AuditTrailEventEntity(entity.Entry,
+         var eventEntity = new AuditTrailEventEntity(
+            entity.Entry,
             entityConfig.ServiceName,
             entity.ActionType,
             entity.Name,
             entityConfig.PermissionToRead,
             entity.PrimaryKeyValue,
-            transformedProperties);
+            transformedProps
+         );
 
-         transformedEntities.Add(transformedEntity);
+         transformedEntities.Add(eventEntity);
       }
 
       return new AuditTrailEventData(transformedEntities);
