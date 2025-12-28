@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using EFCore.Audit.Configurator;
-using EFCore.Audit.Services;
 using EFCore.Audit.Services.Implementations;
 using EFCore.Audit.Services.Interfaces;
 using Microsoft.AspNetCore.Builder;

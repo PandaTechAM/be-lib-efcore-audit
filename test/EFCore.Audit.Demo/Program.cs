@@ -1,9 +1,7 @@
-using System.Text.Json;
 using EFCore.Audit.Demo;
 using EFCore.Audit.Demo.Context;
 using EFCore.Audit.Demo.Extensions;
 using EFCore.Audit.Extensions;
-using EFCore.Audit.Services;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
