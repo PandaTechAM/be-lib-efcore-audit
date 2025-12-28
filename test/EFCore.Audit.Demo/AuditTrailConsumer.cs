@@ -1,15 +1,12 @@
 ﻿using System.Text.Json;
 using EFCore.Audit.Models;
 using EFCore.Audit.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 
 namespace EFCore.Audit.Demo;
 
 public class AuditTrailConsumer : IAuditTrailConsumer
 {
-   public Task ConsumeAuditTrailAsync(AuditTrailEventData auditTrailEventData, CancellationToken cancellationToken)
+   public Task ConsumeAuditTrailAsync(AuditTrailEventData auditTrailEventData, CancellationToken ct)
    {
       var log = AuditTrailEventDataDebug.DebugLog(auditTrailEventData);
       Console.WriteLine(log);

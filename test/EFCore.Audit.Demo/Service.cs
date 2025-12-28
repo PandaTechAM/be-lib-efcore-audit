@@ -2,7 +2,6 @@
 using EFCore.Audit.Demo.Entities;
 using EFCore.Audit.Demo.Enums;
 using EFCore.Audit.Models;
-using EFCore.Audit.Services.Implementations;
 using EFCore.Audit.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +9,7 @@ namespace EFCore.Audit.Demo;
 
 public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublisher)
 {
-   public async Task CreatePostAsync(CancellationToken cancellationToken = default)
+   public async Task CreatePostAsync(CancellationToken ct = default)
    {
       var blog = new Blog
       {
@@ -26,13 +25,13 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
          Blog = blog
       };
 
-      await dbContext.Posts.AddAsync(post, cancellationToken);
-      await dbContext.SaveChangesAsync(cancellationToken);
+      await dbContext.Posts.AddAsync(post, ct);
+      await dbContext.SaveChangesAsync(ct);
    }
 
-   public async Task UpdatePostTitleAsync(CancellationToken cancellationToken = default)
+   public async Task UpdatePostTitleAsync(CancellationToken ct = default)
    {
-      var existingPost = await dbContext.Posts.FirstOrDefaultAsync(cancellationToken: cancellationToken);
+      var existingPost = await dbContext.Posts.FirstOrDefaultAsync(cancellationToken: ct);
 
       if (existingPost == null)
       {
@@ -40,12 +39,12 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
       }
 
       existingPost.Title = "postTitleChanged";
-      await dbContext.SaveChangesAsync(cancellationToken);
+      await dbContext.SaveChangesAsync(ct);
    }
 
-   public async Task DeletePostAsync(CancellationToken cancellationToken = default)
+   public async Task DeletePostAsync(CancellationToken ct = default)
    {
-      var existingPost = await dbContext.Posts.FirstOrDefaultAsync(cancellationToken: cancellationToken);
+      var existingPost = await dbContext.Posts.FirstOrDefaultAsync(cancellationToken: ct);
 
       if (existingPost == null)
       {
@@ -53,12 +52,12 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
       }
 
       dbContext.Posts.Remove(existingPost);
-      await dbContext.SaveChangesAsync(cancellationToken);
+      await dbContext.SaveChangesAsync(ct);
    }
 
-   public async Task CreatePostTransaction(CancellationToken cancellationToken = default)
+   public async Task CreatePostTransaction(CancellationToken ct = default)
    {
-      await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+      await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
 
       try
       {
@@ -76,8 +75,8 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
             Blog = blog
          };
 
-         await dbContext.Posts.AddAsync(post, cancellationToken);
-         await dbContext.SaveChangesAsync(cancellationToken);
+         await dbContext.Posts.AddAsync(post, ct);
+         await dbContext.SaveChangesAsync(ct);
 
          var anotherPost = new Post
          {
@@ -86,13 +85,13 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
             Blog = blog
          };
 
-         await dbContext.Posts.AddAsync(anotherPost, cancellationToken);
+         await dbContext.Posts.AddAsync(anotherPost, ct);
 
-         await dbContext.SaveChangesAsync(cancellationToken);
+         await dbContext.SaveChangesAsync(ct);
 
          dbContext.Remove(post);
-         await dbContext.SaveChangesAsync(cancellationToken);
-         await transaction.CommitAsync(cancellationToken);
+         await dbContext.SaveChangesAsync(ct);
+         await transaction.CommitAsync(ct);
       }
       catch (Exception)
       {
@@ -101,9 +100,9 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
       }
    }
 
-   public async Task FailTransactionAsync(CancellationToken cancellationToken = default)
+   public async Task FailTransactionAsync(CancellationToken ct = default)
    {
-      await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+      await using var transaction = await dbContext.Database.BeginTransactionAsync(ct);
 
       try
       {
@@ -121,8 +120,8 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
             Blog = blog
          };
 
-         await dbContext.Posts.AddAsync(post, cancellationToken);
-         await dbContext.SaveChangesAsync(cancellationToken);
+         await dbContext.Posts.AddAsync(post, ct);
+         await dbContext.SaveChangesAsync(ct);
 
          var anotherPost = new Post
          {
@@ -131,9 +130,9 @@ public class Service(PostgresContext dbContext, IAuditTrailPublisher auditPublis
             Blog = blog
          };
 
-         await dbContext.Posts.AddAsync(anotherPost, cancellationToken);
+         await dbContext.Posts.AddAsync(anotherPost, ct);
 
-         await dbContext.SaveChangesAsync(cancellationToken);
+         await dbContext.SaveChangesAsync(ct);
          throw new Exception("Transaction failed");
       }
       catch (Exception)

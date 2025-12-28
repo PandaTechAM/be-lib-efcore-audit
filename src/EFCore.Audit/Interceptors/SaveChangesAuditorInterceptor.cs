@@ -51,7 +51,7 @@ public class SaveChangesAuditorInterceptor(IHttpContextAccessor contextAccessor)
       }
 
 
-      await auditTrailTrackingService.PublishAuditTrailEventData(cancellationToken);
+      await auditTrailTrackingService.PublishAuditTrailEventDataAsync(cancellationToken);
       return await base.SavedChangesAsync(eventData, result, cancellationToken);
    }
 
@@ -103,7 +103,7 @@ public class SaveChangesAuditorInterceptor(IHttpContextAccessor contextAccessor)
          cancellationToken = contextAccessor.HttpContext.RequestAborted;
       }
 
-      auditTrailTrackingService.PublishAuditTrailEventData(cancellationToken)
+      auditTrailTrackingService.PublishAuditTrailEventDataAsync(cancellationToken)
                                .GetAwaiter()
                                .GetResult();
 
