@@ -1,5 +1,4 @@
-﻿using EFCore.Audit.Interceptors;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EFCore.Audit.Extensions;

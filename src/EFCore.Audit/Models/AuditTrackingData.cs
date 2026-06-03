@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace EFCore.Audit.Models;
-internal class AuditedEntity
+
+public class AuditedEntity
 {
    public required EntityEntry Entry { get; set; }
    public required Type Type { get; set; }
