@@ -21,8 +21,8 @@
         <PackageIcon>pandatech.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
 
-        <Version>3.0.1</Version>
-        <PackageReleaseNotes>Multi-target net8.0/9.0/10.0, removed HttpContext dependency from audit pipeline, improved background job and transaction support, enhanced documentation</PackageReleaseNotes>
+        <Version>3.0.2</Version>
+        <PackageReleaseNotes>Multi-target net8.0/9.0/10.0, Update Audit Tracking Service Logic</PackageReleaseNotes>
 
         <!-- Build quality -->
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
