@@ -1,27 +1,30 @@
 ﻿using EFCore.Audit.Services.Implementations;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-
-namespace EFCore.Audit.Interceptors;
 
 public class SaveChangesAuditorInterceptor : SaveChangesInterceptor
 {
+   private readonly AuditTrailTrackingService _trackingService;
+
+   public SaveChangesAuditorInterceptor(
+      AuditTrailTrackingService trackingService)
+   {
+      _trackingService = trackingService;
+   }
+
    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
       DbContextEventData eventData,
       InterceptionResult<int> result,
       CancellationToken cancellationToken = default)
    {
-      if (eventData.Context is null)
+      if (eventData.Context is not null)
       {
-         return base.SavingChangesAsync(eventData, result, cancellationToken);
+         _trackingService.AddTrackedData(eventData.Context);
       }
 
-      var trackingService = eventData.Context.GetService<AuditTrailTrackingService>();
-
-      trackingService.AddTrackedData(eventData.Context);
-
-      return base.SavingChangesAsync(eventData, result, cancellationToken);
+      return base.SavingChangesAsync(
+         eventData,
+         result,
+         cancellationToken);
    }
 
    public override async ValueTask<int> SavedChangesAsync(
@@ -29,59 +32,58 @@ public class SaveChangesAuditorInterceptor : SaveChangesInterceptor
       int result,
       CancellationToken cancellationToken = default)
    {
-      if (eventData.Context is null)
+      if (eventData.Context is not null)
       {
-         return await base.SavedChangesAsync(eventData, result, cancellationToken);
+         _trackingService.UpdateTrackedData(eventData.Context);
+
+         if (eventData.Context.Database.CurrentTransaction is null)
+         {
+            await _trackingService.PublishAuditTrailEventDataAsync(
+               eventData.Context,
+               cancellationToken);
+         }
       }
 
-      var trackingService = eventData.Context.GetService<AuditTrailTrackingService>();
-
-      trackingService.UpdateTrackedData();
-
-      if (eventData.Context.Database.CurrentTransaction is null)
-      {
-         await trackingService.PublishAuditTrailEventDataAsync(cancellationToken);
-      }
-
-      return await base.SavedChangesAsync(eventData, result, cancellationToken);
+      return await base.SavedChangesAsync(
+         eventData,
+         result,
+         cancellationToken);
    }
 
    public override InterceptionResult<int> SavingChanges(
-      DbContextEventData eventData,
-      InterceptionResult<int> result)
+   DbContextEventData eventData,
+   InterceptionResult<int> result)
    {
-      if (eventData.Context is null)
+      if (eventData.Context is not null)
       {
-         return base.SavingChanges(eventData, result);
+         _trackingService.AddTrackedData(eventData.Context);
       }
 
-      var trackingService = eventData.Context.GetService<AuditTrailTrackingService>();
-
-      trackingService.AddTrackedData(eventData.Context);
-
-      return base.SavingChanges(eventData, result);
+      return base.SavingChanges(
+         eventData,
+         result);
    }
 
    public override int SavedChanges(
       SaveChangesCompletedEventData eventData,
       int result)
    {
-      if (eventData.Context is null)
+      if (eventData.Context is not null)
       {
-         return base.SavedChanges(eventData, result);
+         _trackingService.UpdateTrackedData(eventData.Context);
+
+         if (eventData.Context.Database.CurrentTransaction is null)
+         {
+            _trackingService.PublishAuditTrailEventDataAsync(
+                  eventData.Context,
+                  CancellationToken.None)
+               .GetAwaiter()
+               .GetResult();
+         }
       }
 
-      var trackingService = eventData.Context.GetService<AuditTrailTrackingService>();
-
-      trackingService.UpdateTrackedData();
-
-      if (eventData.Context.Database.CurrentTransaction is null)
-      {
-         trackingService.PublishAuditTrailEventDataAsync(CancellationToken.None)
-                        .GetAwaiter()
-                        .GetResult();
-      }
-
-      return base.SavedChanges(eventData, result);
+      return base.SavedChanges(
+         eventData,
+         result);
    }
 }
