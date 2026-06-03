@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using EFCore.Audit.Configurator;
-using EFCore.Audit.Interceptors;
 using EFCore.Audit.Services.Implementations;
 using EFCore.Audit.Services.Interfaces;
 using Microsoft.AspNetCore.Builder;
@@ -22,10 +21,10 @@ public static class WebApplicationBuilderExtensions
 
       builder.Services.AddSingleton(auditTrailConfigurator);
       builder.Services.AddScoped<IAuditTrailPublisher, AuditTrailPublisher>();
-      builder.Services.AddScoped<AuditTrailTrackingService>();
       builder.Services.AddScoped<IAuditTrailConsumer, TConsumer>();
-      builder.Services.AddScoped<SaveChangesAuditorInterceptor>();
-      builder.Services.AddScoped<TransactionAuditorInterceptor>();
+      builder.Services.AddSingleton<SaveChangesAuditorInterceptor>();
+      builder.Services.AddSingleton<TransactionAuditorInterceptor>();
+      builder.Services.AddSingleton<AuditTrailTrackingService>();
 
       return builder;
    }

@@ -1,51 +1,54 @@
-﻿using System.Data.Common;
-using EFCore.Audit.Services.Implementations;
+﻿using EFCore.Audit.Services.Implementations;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-
-namespace EFCore.Audit.Interceptors;
+using System.Data.Common;
 
 public class TransactionAuditorInterceptor : DbTransactionInterceptor
 {
+   private readonly AuditTrailTrackingService _trackingService;
+
+   public TransactionAuditorInterceptor(
+      AuditTrailTrackingService trackingService)
+   {
+      _trackingService = trackingService;
+   }
+
    public override async Task TransactionCommittedAsync(
       DbTransaction transaction,
       TransactionEndEventData eventData,
       CancellationToken cancellationToken = default)
    {
-      if (eventData.Context is null)
+      if (eventData.Context is not null)
       {
-         await base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
-         return;
+         _trackingService.UpdateTrackedData(eventData.Context);
+
+         await _trackingService.PublishAuditTrailEventDataAsync(
+            eventData.Context,
+            cancellationToken);
       }
 
-      var trackingService = eventData.Context.GetService<AuditTrailTrackingService>();
-
-      trackingService.UpdateTrackedData();
-
-      await trackingService.PublishAuditTrailEventDataAsync(cancellationToken);
-
-      await base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
+      await base.TransactionCommittedAsync(
+         transaction,
+         eventData,
+         cancellationToken);
    }
 
    public override void TransactionCommitted(
-      DbTransaction transaction,
-      TransactionEndEventData eventData)
+   DbTransaction transaction,
+   TransactionEndEventData eventData)
    {
-      if (eventData.Context is null)
+      if (eventData.Context is not null)
       {
-         base.TransactionCommitted(transaction, eventData);
-         return;
+         _trackingService.UpdateTrackedData(eventData.Context);
+
+         _trackingService.PublishAuditTrailEventDataAsync(
+               eventData.Context,
+               CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
       }
 
-      var trackingService =
-         eventData.Context.GetService<AuditTrailTrackingService>();
-
-      trackingService.UpdateTrackedData();
-
-      trackingService.PublishAuditTrailEventDataAsync(CancellationToken.None)
-                     .GetAwaiter()
-                     .GetResult();
-
-      base.TransactionCommitted(transaction, eventData);
+      base.TransactionCommitted(
+         transaction,
+         eventData);
    }
 }

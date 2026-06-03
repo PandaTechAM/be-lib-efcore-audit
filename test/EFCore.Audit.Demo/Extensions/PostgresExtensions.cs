@@ -10,7 +10,7 @@ public static class PostgresExtensions
       string connectionString)
       where TContext : DbContext
    {
-      builder.Services.AddDbContext<TContext>((sp, options) =>
+      builder.Services.AddDbContextPool<TContext>((sp, options) =>
       {
          options
             .UseNpgsql(connectionString)
