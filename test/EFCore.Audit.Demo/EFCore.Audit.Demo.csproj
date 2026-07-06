@@ -12,7 +12,6 @@
     <!-- Pin transitive Microsoft.OpenApi above 2.0.0 to clear NU1903 (GHSA-v5pm-xwqc-g5wc). -->
     <PackageReference Include="Microsoft.OpenApi" Version="2.9.0"/>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2"/>
-    <PackageReference Include="Pandatech.Crypto" Version="8.0.1"/>
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.10"/>
   </ItemGroup>
 
