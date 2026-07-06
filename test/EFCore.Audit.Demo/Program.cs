@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddAuditTrail<AuditTrailConsumer>(typeof(Program).Assembly);
 
 builder.AddPostgresContext<PostgresContext>(
-   "Server=localhost;Port=5432;Database=audit_test;User Id=test;Password=test;Pooling=true;");
+    "Server=localhost;Port=5432;Database=audit_test;User Id=test;Password=test;Pooling=true;");
 
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<Service>();
@@ -22,4 +22,4 @@ app.MapScalarApiReference();
 app.EnsureCleanDb<PostgresContext>();
 app.AddDemoEndpoints();
 
-app.Run();
+await app.RunAsync();
