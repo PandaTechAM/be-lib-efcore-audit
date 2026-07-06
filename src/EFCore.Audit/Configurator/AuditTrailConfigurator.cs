@@ -27,12 +27,15 @@ public abstract class AuditTrailConfigurator<TEntity> : AbstractAuditTrailConfig
     {
         var propertyName = GetPropertyName(propertyExpression);
 
-        if (!_entityConfig.Properties.ContainsKey(propertyName))
+        if (_entityConfig.Properties.TryGetValue(propertyName, out var value))
         {
-            _entityConfig.Properties[propertyName] = new PropertyAuditConfiguration();
+            return new PropertyConfigurator<TEntity, TProperty>(value);
         }
 
-        return new PropertyConfigurator<TEntity, TProperty>(_entityConfig.Properties[propertyName]);
+        value = new PropertyAuditConfiguration();
+        _entityConfig.Properties[propertyName] = value;
+
+        return new PropertyConfigurator<TEntity, TProperty>(value);
     }
 
     /// <summary>Sets the row-level read permission required to view audit entries for this entity.</summary>

@@ -21,8 +21,8 @@
     <PackageIcon>pandatech.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
-    <Version>3.0.3</Version>
-    <PackageReleaseNotes>Tooling modernization: xUnit v3 test migration, dependency updates, XML docs, standardized editorconfig/gitignore/global.json.</PackageReleaseNotes>
+    <Version>3.0.4</Version>
+    <PackageReleaseNotes>Tooling modernization (xUnit v3, dependency/doc updates, standardized configs); EF Core references kept at major floor versions for maximum consumer compatibility.</PackageReleaseNotes>
 
     <!-- Build quality -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -51,20 +51,20 @@
 
   <!-- EF Core 8.x for .NET 8 -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.28"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.28"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.0"/>
   </ItemGroup>
 
   <!-- EF Core 9.x for .NET 9 -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.17"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.17"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0"/>
   </ItemGroup>
 
   <!-- EF Core 10.x for .NET 10 -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9"/>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0"/>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.0"/>
   </ItemGroup>
 
   <!-- Analyzers (all frameworks) -->
