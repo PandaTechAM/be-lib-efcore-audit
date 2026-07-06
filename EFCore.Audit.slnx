@@ -1,16 +1,16 @@
 <Solution>
   <Folder Name="/Solution Items/">
-    <File Path=".editorconfig" />
-    <File Path=".github/workflows/main.yml" />
-    <File Path=".gitignore" />
-    <File Path="global.json" />
-    <File Path="Readme.md" />
+    <File Path=".editorconfig"/>
+    <File Path=".github/workflows/main.yml"/>
+    <File Path=".gitignore"/>
+    <File Path="global.json"/>
+    <File Path="Readme.md"/>
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/EFCore.Audit/EFCore.Audit.csproj" />
+    <Project Path="src/EFCore.Audit/EFCore.Audit.csproj"/>
   </Folder>
   <Folder Name="/test/">
-    <Project Path="test/EFCore.Audit.Demo/EFCore.Audit.Demo.csproj" />
-    <Project Path="test/EFCore.Audit.Tests/EFCore.Audit.Tests.csproj" />
+    <Project Path="test/EFCore.Audit.Demo/EFCore.Audit.Demo.csproj"/>
+    <Project Path="test/EFCore.Audit.Tests/EFCore.Audit.Tests.csproj"/>
   </Folder>
 </Solution>

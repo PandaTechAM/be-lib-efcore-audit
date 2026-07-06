@@ -1,6 +1,7 @@
 # Pandatech.EFCore.Audit
 
-Automatic audit trail tracking for Entity Framework Core 8+ with configurable property transformations, composite key support, and manual bulk auditing.
+Automatic audit trail tracking for Entity Framework Core 8+ with configurable property transformations, composite key
+support, and manual bulk auditing.
 
 ## Installation
 
@@ -73,13 +74,13 @@ public class PostAuditConfiguration : AuditTrailConfigurator<Post>
     {
         // Set service name for this entity
         SetServiceName("BlogService");
-        
+
         // Track only specific events (default: all events)
         WriteAuditTrailOnEvents(AuditActionType.Create, AuditActionType.Update);
-        
+
         // Set read permission for row-level security
         SetReadPermission(Permission.AdminOnly);
-        
+
         // Property transformations
         RuleFor(x => x.Content).Ignore();                    // Don't track
         RuleFor(x => x.Title).Rename("PostTitle");          // Rename in audit
@@ -90,18 +91,18 @@ public class PostAuditConfiguration : AuditTrailConfigurator<Post>
 
 ### Property Configuration Methods
 
-| Method | Description | Example |
-|--------|-------------|---------|
-| `Ignore()` | Skip tracking this property | `RuleFor(x => x.Password).Ignore()` |
-| `Rename(string)` | Change property name in audit trail | `RuleFor(x => x.Email).Rename("UserEmail")` |
-| `Transform<TOutput>(Func)` | Transform value before auditing | `RuleFor(x => x.Data).Transform(Encrypt)` |
+| Method                     | Description                         | Example                                     |
+|----------------------------|-------------------------------------|---------------------------------------------|
+| `Ignore()`                 | Skip tracking this property         | `RuleFor(x => x.Password).Ignore()`         |
+| `Rename(string)`           | Change property name in audit trail | `RuleFor(x => x.Email).Rename("UserEmail")` |
+| `Transform<TOutput>(Func)` | Transform value before auditing     | `RuleFor(x => x.Data).Transform(Encrypt)`   |
 
 ### Entity Configuration Methods
 
-| Method | Description |
-|--------|-------------|
-| `SetServiceName(string)` | Identify the originating service |
-| `SetReadPermission(object)` | Set permission level for row-level security |
+| Method                                              | Description                                         |
+|-----------------------------------------------------|-----------------------------------------------------|
+| `SetServiceName(string)`                            | Identify the originating service                    |
+| `SetReadPermission(object)`                         | Set permission level for row-level security         |
 | `WriteAuditTrailOnEvents(params AuditActionType[])` | Track only specific events (Create, Update, Delete) |
 
 ## Audit Event Data
@@ -121,6 +122,7 @@ public record AuditTrailEventEntity(
 ```
 
 **Example audit event:**
+
 ```json
 {
   "entities": [{
@@ -145,12 +147,12 @@ For operations outside EF Core's change tracker (raw SQL, `ExecuteUpdate`, `AsNo
 public class MyService
 {
     private readonly IAuditTrailPublisher _publisher;
-    
+
     public async Task BulkCreatePosts()
     {
         // Your untracked operations...
         await db.Database.ExecuteSqlRawAsync("INSERT INTO Posts ...");
-        
+
         // Manually create audit entries
         var auditEntries = new List<ManualAuditEntry>
         {
@@ -180,7 +182,7 @@ public class MyService
                 }
             )
         };
-        
+
         await _publisher.BulkAuditAsync(auditEntries);
     }
 }
@@ -188,19 +190,20 @@ public class MyService
 
 ## Features
 
-✅ **Automatic change tracking** - Hooks into EF Core's change tracker  
-✅ **Composite key support** - Concatenates composite keys with `_` delimiter  
-✅ **Property transformations** - Ignore, rename, or transform tracked properties  
-✅ **Transaction support** - Publishes audit events after transaction commit  
-✅ **Manual bulk auditing** - Track untracked operations like raw SQL  
-✅ **Configurable permissions** - Row-level security support via `SetReadPermission`  
-✅ **Service identification** - Track which service made the change  
+✅ **Automatic change tracking** - Hooks into EF Core's change tracker
+✅ **Composite key support** - Concatenates composite keys with `_` delimiter
+✅ **Property transformations** - Ignore, rename, or transform tracked properties
+✅ **Transaction support** - Publishes audit events after transaction commit
+✅ **Manual bulk auditing** - Track untracked operations like raw SQL
+✅ **Configurable permissions** - Row-level security support via `SetReadPermission`
+✅ **Service identification** - Track which service made the change
 ✅ **Partial tracking** - For updates, only changed properties are tracked
 
 ## Limitations
 
-⚠️ **Not atomic** - Event-based architecture means audit data could be lost in edge cases  
-⚠️ **No untracked operations** - `AsNoTracking`, `ExecuteUpdate`, `ExecuteDelete` are not automatically audited (use manual bulk audit)
+⚠️ **Not atomic** - Event-based architecture means audit data could be lost in edge cases
+⚠️ **No untracked operations** - `AsNoTracking`, `ExecuteUpdate`, `ExecuteDelete` are not automatically audited (use
+manual bulk audit)
 
 ## Advanced Usage
 
@@ -228,12 +231,12 @@ public class UserAuditConfiguration : AuditTrailConfigurator<User>
         RuleFor(x => x.Salary).Transform(x => x * 0.01m); // Store in cents
         RuleFor(x => x.CreatedAt).Transform(x => x.ToString("o")); // ISO 8601
     }
-    
+
     private static string MaskEmail(string email)
     {
         var parts = email.Split('@');
-        return parts.Length == 2 
-            ? $"{parts[0][0]}***@{parts[1]}" 
+        return parts.Length == 2
+            ? $"{parts[0][0]}***@{parts[1]}"
             : email;
     }
 }
@@ -260,7 +263,7 @@ public class SensitiveDataConfig : AuditTrailConfigurator<SensitiveData>
 public class DatabaseAuditConsumer : IAuditTrailConsumer
 {
     private readonly AuditDbContext _auditDb;
-    
+
     public async Task ConsumeAuditTrailAsync(AuditTrailEventData eventData, CancellationToken ct)
     {
         var auditRecords = eventData.Entities.Select(e => new AuditRecord
@@ -273,7 +276,7 @@ public class DatabaseAuditConsumer : IAuditTrailConsumer
             ServiceName = e.ServiceName,
             Permission = e.ReadPermission?.ToString()
         });
-        
+
         _auditDb.AuditRecords.AddRange(auditRecords);
         await _auditDb.SaveChangesAsync(ct);
     }
@@ -286,7 +289,7 @@ public class DatabaseAuditConsumer : IAuditTrailConsumer
 public class RabbitMqAuditConsumer : IAuditTrailConsumer
 {
     private readonly IMessagePublisher _publisher;
-    
+
     public async Task ConsumeAuditTrailAsync(AuditTrailEventData eventData, CancellationToken ct)
     {
         var message = new AuditMessage
@@ -294,7 +297,7 @@ public class RabbitMqAuditConsumer : IAuditTrailConsumer
             Timestamp = DateTime.UtcNow,
             Events = eventData.Entities
         };
-        
+
         await _publisher.PublishAsync("audit-trail", message, ct);
     }
 }

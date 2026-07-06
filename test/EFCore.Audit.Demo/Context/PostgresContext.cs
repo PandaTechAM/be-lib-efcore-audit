@@ -5,6 +5,6 @@ namespace EFCore.Audit.Demo.Context;
 
 public class PostgresContext(DbContextOptions options) : DbContext(options)
 {
-   public DbSet<Blog> Blogs { get; set; }
-   public DbSet<Post> Posts { get; set; }
+    public DbSet<Blog> Blogs { get; set; }
+    public DbSet<Post> Posts { get; set; }
 }

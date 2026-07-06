@@ -6,57 +6,57 @@ using EFCore.Audit.Services.Interfaces;
 namespace EFCore.Audit.Services.Implementations;
 
 internal class AuditTrailPublisher(IAuditTrailConsumer auditTrailConsumer, AuditTrailConfigurator configurator)
-   : IAuditTrailPublisher
+    : IAuditTrailPublisher
 {
-   public async Task BulkAuditAsync(List<ManualAuditEntry> auditEntries, CancellationToken ct = default)
-   {
-      if (auditEntries.Count == 0)
-      {
-         return;
-      }
+    public async Task BulkAuditAsync(List<ManualAuditEntry> auditEntries, CancellationToken ct = default)
+    {
+        if (auditEntries.Count == 0)
+        {
+            return;
+        }
 
-      var transformedEntities = new List<AuditTrailEventEntity>();
+        var transformedEntities = new List<AuditTrailEventEntity>();
 
-      foreach (var auditEntry in auditEntries)
-      {
-         if (!AuditTrailHelper.ShouldProcessEntity(
-                auditEntry.Action,
-                auditEntry.EntityType,
-                configurator,
-                out var entityConfig))
-         {
-            continue;
-         }
+        foreach (var auditEntry in auditEntries)
+        {
+            if (!AuditTrailHelper.ShouldProcessEntity(
+                    auditEntry.Action,
+                    auditEntry.EntityType,
+                    configurator,
+                    out var entityConfig))
+            {
+                continue;
+            }
 
-         foreach (var detail in auditEntry.ChangedItems)
-         {
-            var primaryKeyValue = string.Join("_", detail.PrimaryKeyIds);
+            foreach (var detail in auditEntry.ChangedItems)
+            {
+                var primaryKeyValue = string.Join("_", detail.PrimaryKeyIds);
 
-            var transformedProps = AuditTrailHelper.TransformProperties(
-               detail.ChangedProperties,
-               entityConfig!.Properties
-            );
+                var transformedProps = AuditTrailHelper.TransformProperties(
+                    detail.ChangedProperties,
+                    entityConfig!.Properties
+                );
 
-            var eventEntity = new AuditTrailEventEntity(
-               null,
-               entityConfig.ServiceName,
-               auditEntry.Action,
-               auditEntry.EntityType.Name,
-               entityConfig.PermissionToRead,
-               primaryKeyValue,
-               transformedProps
-            );
+                var eventEntity = new AuditTrailEventEntity(
+                    null,
+                    entityConfig.ServiceName,
+                    auditEntry.Action,
+                    auditEntry.EntityType.Name,
+                    entityConfig.PermissionToRead,
+                    primaryKeyValue,
+                    transformedProps
+                );
 
-            transformedEntities.Add(eventEntity);
-         }
-      }
+                transformedEntities.Add(eventEntity);
+            }
+        }
 
-      if (transformedEntities.Count == 0)
-      {
-         return;
-      }
+        if (transformedEntities.Count == 0)
+        {
+            return;
+        }
 
-      var eventData = new AuditTrailEventData(transformedEntities);
-      await auditTrailConsumer.ConsumeAuditTrailAsync(eventData, ct);
-   }
+        var eventData = new AuditTrailEventData(transformedEntities);
+        await auditTrailConsumer.ConsumeAuditTrailAsync(eventData, ct);
+    }
 }
