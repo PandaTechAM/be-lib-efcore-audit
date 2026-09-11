@@ -1,4 +1,5 @@
 ﻿using System.Linq.Expressions;
+using EFCore.Audit.Helpers;
 using EFCore.Audit.Models;
 
 namespace EFCore.Audit.Configurator;
@@ -25,7 +26,7 @@ public abstract class AuditTrailConfigurator<TEntity> : AbstractAuditTrailConfig
     protected PropertyConfigurator<TEntity, TProperty> RuleFor<TProperty>(
         Expression<Func<TEntity, TProperty>> propertyExpression)
     {
-        var propertyName = GetPropertyName(propertyExpression);
+        var propertyName = AuditTrailHelper.GetPropertyName(propertyExpression);
 
         if (_entityConfig.Properties.TryGetValue(propertyName, out var value))
         {
@@ -59,14 +60,17 @@ public abstract class AuditTrailConfigurator<TEntity> : AbstractAuditTrailConfig
         return this;
     }
 
-    private static string GetPropertyName<TProperty>(Expression<Func<TEntity, TProperty>> propertyExpression)
+    /// <summary>
+    ///     Audits an update that sets <paramref name="property" /> to <paramref name="deletedValue" /> as a delete that
+    ///     carries the whole entity, for entities removed by a status or flag instead of a DELETE. Updates of an entity
+    ///     that was already deleted stay updates. Overrides a registration-wide marker.
+    /// </summary>
+    protected AuditTrailConfigurator<TEntity> SetSoftDeleteMarker<TProperty>(
+        Expression<Func<TEntity, TProperty>> property,
+        TProperty deletedValue)
     {
-        if (propertyExpression.Body is MemberExpression memberExpression)
-        {
-            return memberExpression.Member.Name;
-        }
-
-        throw new ArgumentException("Invalid property expression.");
+        _entityConfig.SoftDeleteMarker = new SoftDeleteMarker(AuditTrailHelper.GetPropertyName(property), deletedValue);
+        return this;
     }
 }
 

@@ -21,7 +21,7 @@ public class SaveChangesAuditorInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context is not null)
         {
-            _trackingService.AddTrackedData(eventData.Context);
+            _trackingService.BeginSave(eventData.Context);
         }
 
         return base.SavingChangesAsync(
@@ -38,14 +38,9 @@ public class SaveChangesAuditorInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context is not null)
         {
-            _trackingService.UpdateTrackedData(eventData.Context);
-
-            if (eventData.Context.Database.CurrentTransaction is null)
-            {
-                await _trackingService.PublishAuditTrailEventDataAsync(
-                    eventData.Context,
-                    cancellationToken);
-            }
+            await _trackingService.EndSaveAsync(
+                eventData.Context,
+                cancellationToken);
         }
 
         return await base.SavedChangesAsync(
@@ -61,7 +56,7 @@ public class SaveChangesAuditorInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context is not null)
         {
-            _trackingService.AddTrackedData(eventData.Context);
+            _trackingService.BeginSave(eventData.Context);
         }
 
         return base.SavingChanges(
@@ -76,16 +71,11 @@ public class SaveChangesAuditorInterceptor : SaveChangesInterceptor
     {
         if (eventData.Context is not null)
         {
-            _trackingService.UpdateTrackedData(eventData.Context);
-
-            if (eventData.Context.Database.CurrentTransaction is null)
-            {
-                _trackingService.PublishAuditTrailEventDataAsync(
-                        eventData.Context,
-                        CancellationToken.None)
-                    .GetAwaiter()
-                    .GetResult();
-            }
+            _trackingService.EndSaveAsync(
+                    eventData.Context,
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
         }
 
         return base.SavedChanges(

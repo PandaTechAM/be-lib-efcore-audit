@@ -1,4 +1,5 @@
-﻿using EFCore.Audit.Configurator;
+﻿using System.Linq.Expressions;
+using EFCore.Audit.Configurator;
 using EFCore.Audit.Extensions;
 using EFCore.Audit.Models;
 
@@ -6,6 +7,16 @@ namespace EFCore.Audit.Helpers;
 
 internal static class AuditTrailHelper
 {
+    internal static string GetPropertyName<TEntity, TProperty>(Expression<Func<TEntity, TProperty>> propertyExpression)
+    {
+        if (propertyExpression.Body is MemberExpression memberExpression)
+        {
+            return memberExpression.Member.Name;
+        }
+
+        throw new ArgumentException("Invalid property expression.");
+    }
+
     internal static bool ShouldProcessEntity(AuditActionType actionType,
         Type entityType,
         AuditTrailConfigurator configurator,

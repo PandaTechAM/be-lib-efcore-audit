@@ -16,9 +16,15 @@ permission per entity.
   tracked entities on `SavingChanges`, then publishes on `SavedChanges` for non-transactional saves.
   `TransactionAuditorInterceptor` publishes on transaction commit instead, so a save inside a
   transaction is audited once, at commit.
-- **`AuditTrailTrackingService`** holds per-DbContext state (keyed by `ContextId.InstanceId`),
-  removes unchanged properties, applies configured transforms, and dispatches an
-  `AuditTrailEventData` to the host's `IAuditTrailConsumer`.
+- **`AuditTrailTrackingService`** holds per-DbContext state in a `ConditionalWeakTable` keyed by the
+  context instance and reset per pool lease. Pending entries belong to one caller transaction (by
+  `TransactionId`): they publish on that commit, and are dropped on its rollback, when a save runs
+  under a different transaction or none, or when a save never reports success. EF's own transaction
+  around a non-transactional save never matches, so `SavedChanges` publishes those. It applies
+  configured transforms and dispatches an `AuditTrailEventData` to the host's `IAuditTrailConsumer`.
+- **Values per action:** Create carries every property; Update only those EF marked modified; Delete
+  every property (a hard delete from the original values, a soft delete from the current ones). A
+  soft delete is an update whose `SoftDeleteMarker` property transitions to its deleted value.
 - **Config model** (`src/EFCore.Audit/Configurator`, `Models`): `AuditTrailConfigurator<TEntity>`
   is the fluent base (`RuleFor`, `SetServiceName`, `SetReadPermission`, `WriteAuditTrailOnEvents`).
 

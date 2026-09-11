@@ -21,8 +21,8 @@
     <PackageIcon>pandatech.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
-    <Version>3.0.4</Version>
-    <PackageReleaseNotes>Tooling modernization (xUnit v3, dependency/doc updates, standardized configs); EF Core references kept at major floor versions for maximum consumer compatibility.</PackageReleaseNotes>
+    <Version>3.1.0</Version>
+    <PackageReleaseNotes>Deletes carry the whole entity: hard deletes as the row stood in the database, soft deletes (new SetSoftDeleteMarker, per entity or registration-wide) as the row now stands. Updates carry only the properties EF Core modified. Pending entries are dropped on rollback, abandoned transactions, failed saves and context pool reuse, so uncommitted changes are never published.</PackageReleaseNotes>
 
     <!-- Build quality -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>

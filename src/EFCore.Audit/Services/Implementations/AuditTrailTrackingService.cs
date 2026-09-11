@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using EFCore.Audit.Configurator;
 using EFCore.Audit.Extensions;
 using EFCore.Audit.Helpers;
@@ -16,7 +17,8 @@ public class AuditTrailTrackingService
     private readonly AuditTrailConfigurator _configurator;
     private readonly IServiceScopeFactory _scopeFactory;
 
-    private readonly ConcurrentDictionary<Guid, AuditTrackingState> _states = new();
+    // Keyed by the context instance so the state is collected with it; a pooled instance is told apart per lease.
+    private readonly ConditionalWeakTable<DbContext, AuditTrackingState> _states = new();
 
     /// <summary>Creates the tracking service for the given configuration and scope factory.</summary>
     public AuditTrailTrackingService(
@@ -27,17 +29,38 @@ public class AuditTrailTrackingService
         _scopeFactory = scopeFactory;
     }
 
-    internal void AddTrackedData(DbContext dbContext)
+    internal void BeginSave(DbContext dbContext)
     {
-        var state = _states.GetOrAdd(
-            dbContext.ContextId.InstanceId,
-            _ => new AuditTrackingState());
+        // Enumerating entries runs DetectChanges, which can throw; do it before touching the state.
+        var entries = dbContext.ChangeTracker
+            .Entries()
+            .Where(x => x.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+            .ToList();
 
-        foreach (var entry in dbContext.ChangeTracker.Entries())
+        var state = GetState(dbContext);
+
+        // A save that never reported success (it failed, was canceled, or another interceptor threw) is dropped.
+        state.DiscardSaveInProgress();
+
+        // Pending entities belong to one caller transaction. Anything captured outside this save's transaction was
+        // left by a failed save or an abandoned transaction and must never be published.
+        var transactionId = dbContext.Database.CurrentTransaction?.TransactionId;
+
+        if (transactionId is null || transactionId != state.TransactionId)
+        {
+            state.Entities.Clear();
+            state.TransactionId = transactionId;
+        }
+
+        state.SaveCheckpoint = state.Entities.Count;
+        state.SaveInProgress = true;
+
+        foreach (var entry in entries)
         {
             var entityType = entry.Entity.GetType();
+            var entityConfig = _configurator.GetEntityConfiguration(entityType);
 
-            if (_configurator.GetEntityConfiguration(entityType) is null)
+            if (entityConfig is null)
             {
                 continue;
             }
@@ -46,6 +69,7 @@ public class AuditTrailTrackingService
             {
                 Entry = entry,
                 ActionType = entry.State.ToAuditActionType(),
+                CapturedState = entry.State,
                 Name = entityType.Name,
                 PrimaryKeyValue = GetPrimaryKeyValue(entry),
                 Type = entityType
@@ -53,54 +77,107 @@ public class AuditTrailTrackingService
 
             foreach (var property in entry.Properties)
             {
-                auditedEntity.PropertyOriginalValues[property.Metadata.Name] = property.OriginalValue;
-                auditedEntity.PropertyCurrentValues[property.Metadata.Name] = property.CurrentValue;
+                var propertyName = property.Metadata.Name;
+
+                auditedEntity.PropertyOriginalValues[propertyName] = property.OriginalValue;
+                auditedEntity.PropertyCurrentValues[propertyName] = property.CurrentValue;
+
+                if (property.IsModified)
+                {
+                    auditedEntity.ModifiedProperties.Add(propertyName);
+                }
+            }
+
+            if (auditedEntity.CapturedState == EntityState.Modified &&
+                IsSoftDelete(auditedEntity, entityConfig.SoftDeleteMarker))
+            {
+                auditedEntity.ActionType = AuditActionType.Delete;
             }
 
             state.Entities.Add(auditedEntity);
         }
     }
 
-    internal void UpdateTrackedData(DbContext dbContext)
+    internal async Task EndSaveAsync(DbContext dbContext, CancellationToken ct)
     {
-        if (!_states.TryGetValue(
-                dbContext.ContextId.InstanceId,
-                out var state))
+        if (!TryGetState(dbContext, out var state))
         {
             return;
         }
 
-        foreach (var entity in state.Entities)
-        {
-            entity.PrimaryKeyValue = GetPrimaryKeyValue(entity.Entry);
+        state.SaveInProgress = false;
+        RefreshCurrentValues(state);
 
-            foreach (var property in entity.Entry.Properties)
-            {
-                entity.PropertyCurrentValues[property.Metadata.Name] = property.CurrentValue;
-            }
+        // Inside a caller transaction the entities wait for its commit.
+        if (state.TransactionId is null)
+        {
+            await PublishAsync(state, ct);
         }
     }
 
-    internal async Task PublishAuditTrailEventDataAsync(
-        DbContext dbContext,
-        CancellationToken ct)
+    internal async Task CommitTransactionAsync(DbContext dbContext, Guid transactionId, CancellationToken ct)
     {
-        if (!_states.TryRemove(
-                dbContext.ContextId.InstanceId,
-                out var state))
+        // EF's own transaction around a save outside a caller transaction never matches; EndSaveAsync publishes those.
+        if (!TryGetState(dbContext, out var state) || state.TransactionId != transactionId)
         {
             return;
         }
 
-        var auditTrailEventData =
-            ProcessTrackedData(state.Entities);
+        // No save can be running at commit, so one still marked in progress failed and is dropped.
+        state.DiscardSaveInProgress();
+        RefreshCurrentValues(state);
+        state.TransactionId = null;
+
+        await PublishAsync(state, ct);
+    }
+
+    internal void RollbackTransaction(DbContext dbContext, Guid transactionId)
+    {
+        if (!TryGetState(dbContext, out var state) || state.TransactionId != transactionId)
+        {
+            return;
+        }
+
+        state.Entities.Clear();
+        state.TransactionId = null;
+        state.SaveInProgress = false;
+    }
+
+    private AuditTrackingState GetState(DbContext dbContext)
+    {
+        var state = _states.GetValue(dbContext, static _ => new AuditTrackingState());
+        var lease = dbContext.ContextId.Lease;
+
+        if (state.Lease != lease)
+        {
+            state.Reset(lease);
+        }
+
+        return state;
+    }
+
+    private bool TryGetState(DbContext dbContext, [NotNullWhen(true)] out AuditTrackingState? state)
+    {
+        if (_states.TryGetValue(dbContext, out state) && state.Lease == dbContext.ContextId.Lease)
+        {
+            return true;
+        }
+
+        state = null;
+        return false;
+    }
+
+    private async Task PublishAsync(AuditTrackingState state, CancellationToken ct)
+    {
+        var auditTrailEventData = BuildEventData(state.Entities);
+        state.Entities.Clear();
 
         if (auditTrailEventData.Entities.Count == 0)
         {
             return;
         }
 
-        using var scope = _scopeFactory.CreateScope();
+        await using var scope = _scopeFactory.CreateAsyncScope();
 
         var consumer =
             scope.ServiceProvider.GetRequiredService<IAuditTrailConsumer>();
@@ -110,8 +187,7 @@ public class AuditTrailTrackingService
             ct);
     }
 
-    private AuditTrailEventData ProcessTrackedData(
-        List<AuditedEntity> entities)
+    private AuditTrailEventData BuildEventData(List<AuditedEntity> entities)
     {
         var transformedEntities = new List<AuditTrailEventEntity>();
 
@@ -126,10 +202,8 @@ public class AuditTrailTrackingService
                 continue;
             }
 
-            RemoveUnchangedProperties(entity);
-
             var transformedProps = AuditTrailHelper.TransformProperties(
-                entity.PropertyCurrentValues,
+                SelectValues(entity),
                 entityConfig!.Properties);
 
             transformedEntities.Add(
@@ -146,28 +220,44 @@ public class AuditTrailTrackingService
         return new AuditTrailEventData(transformedEntities);
     }
 
-    private static void RemoveUnchangedProperties(
-        AuditedEntity entity)
+    private static Dictionary<string, object?> SelectValues(AuditedEntity entity)
     {
-        if (entity.ActionType == AuditActionType.Create)
+        return entity switch
         {
-            return;
-        }
+            { CapturedState: EntityState.Added } => entity.PropertyCurrentValues,
 
-        var propertiesToRemove =
-            entity.PropertyCurrentValues
-                .Where(kv =>
-                    entity.PropertyOriginalValues.TryGetValue(
-                        kv.Key,
-                        out var originalValue) &&
-                    Equals(originalValue, kv.Value))
-                .Select(x => x.Key)
-                .ToList();
+            // A removed row is audited as it stood in the database.
+            { CapturedState: EntityState.Deleted } => entity.PropertyOriginalValues,
 
-        foreach (var property in propertiesToRemove)
+            // A soft delete is audited as the row now stands, deleted marker included.
+            { ActionType: AuditActionType.Delete } => entity.PropertyCurrentValues,
+
+            _ => entity.PropertyCurrentValues
+                .Where(x => entity.ModifiedProperties.Contains(x.Key))
+                .ToDictionary(x => x.Key, x => x.Value)
+        };
+    }
+
+    private static bool IsSoftDelete(AuditedEntity entity, SoftDeleteMarker? marker)
+    {
+        return marker is not null &&
+               entity.PropertyCurrentValues.TryGetValue(marker.PropertyName, out var current) &&
+               Equals(current, marker.DeletedValue) &&
+               !(entity.PropertyOriginalValues.TryGetValue(marker.PropertyName, out var original) &&
+                 Equals(original, marker.DeletedValue));
+    }
+
+    private static void RefreshCurrentValues(AuditTrackingState state)
+    {
+        // Picks up store-generated keys and values once the save has run.
+        foreach (var entity in state.Entities)
         {
-            entity.PropertyOriginalValues.Remove(property);
-            entity.PropertyCurrentValues.Remove(property);
+            entity.PrimaryKeyValue = GetPrimaryKeyValue(entity.Entry);
+
+            foreach (var property in entity.Entry.Properties)
+            {
+                entity.PropertyCurrentValues[property.Metadata.Name] = property.CurrentValue;
+            }
         }
     }
 

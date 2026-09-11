@@ -99,11 +99,37 @@ public class PostAuditConfiguration : AuditTrailConfigurator<Post>
 
 ### Entity Configuration Methods
 
-| Method                                              | Description                                         |
-|-----------------------------------------------------|-----------------------------------------------------|
-| `SetServiceName(string)`                            | Identify the originating service                    |
-| `SetReadPermission(object)`                         | Set permission level for row-level security         |
-| `WriteAuditTrailOnEvents(params AuditActionType[])` | Track only specific events (Create, Update, Delete) |
+| Method                                              | Description                                                        |
+|-----------------------------------------------------|--------------------------------------------------------------------|
+| `SetServiceName(string)`                            | Identify the originating service                                   |
+| `SetReadPermission(object)`                         | Set permission level for row-level security                        |
+| `WriteAuditTrailOnEvents(params AuditActionType[])` | Track only specific events (Create, Update, Delete)                |
+| `SetSoftDeleteMarker(property, deletedValue)`       | Audit an update that sets `property` to `deletedValue` as a Delete |
+
+### Soft Deletes
+
+Entities removed by a status or flag are updates to EF Core. Declare the marker so the audit trail records them as
+deletes that carry the whole entity:
+
+```csharp
+public class OrderAuditConfiguration : AuditTrailConfigurator<Order>
+{
+    public OrderAuditConfiguration()
+    {
+        SetSoftDeleteMarker(x => x.Status, OrderStatus.Deleted);
+    }
+}
+```
+
+A shared soft-delete base class can be declared once at registration; an entity's own marker takes precedence:
+
+```csharp
+builder.AddAuditTrail<AuditTrailConsumer>(
+    options => options.SetSoftDeleteMarker<SoftDeletableEntity, bool>(x => x.IsDeleted, true),
+    typeof(Program).Assembly);
+```
+
+Only the transition counts: an update to an entity that was already deleted stays an Update.
 
 ## Audit Event Data
 
@@ -120,6 +146,12 @@ public record AuditTrailEventEntity(
     Dictionary<string, object?> TrackedProperty
 );
 ```
+
+`TrackedProperty` holds, with rules applied:
+
+- **Create:** every property, as inserted.
+- **Update:** only the properties EF Core marked as modified.
+- **Delete:** every property; a hard delete as the row stood in the database, a soft delete as the row now stands.
 
 **Example audit event:**
 
@@ -193,17 +225,21 @@ public class MyService
 ✅ **Automatic change tracking** - Hooks into EF Core's change tracker
 ✅ **Composite key support** - Concatenates composite keys with `_` delimiter
 ✅ **Property transformations** - Ignore, rename, or transform tracked properties
-✅ **Transaction support** - Publishes audit events after transaction commit
+✅ **Transaction support** - Publishes after commit; a rollback, an abandoned transaction or a failed save publishes nothing
+✅ **Pooling safe** - Pending entries never outlive their context lease
+✅ **Soft deletes** - Status or flag deletes are audited as deletes with the whole entity
 ✅ **Manual bulk auditing** - Track untracked operations like raw SQL
 ✅ **Configurable permissions** - Row-level security support via `SetReadPermission`
 ✅ **Service identification** - Track which service made the change
-✅ **Partial tracking** - For updates, only changed properties are tracked
+✅ **Partial tracking** - For updates, only modified properties are tracked
 
 ## Limitations
 
 ⚠️ **Not atomic** - Event-based architecture means audit data could be lost in edge cases
 ⚠️ **No untracked operations** - `AsNoTracking`, `ExecuteUpdate`, `ExecuteDelete` are not automatically audited (use
 manual bulk audit)
+⚠️ **EF Core transactions only** - Commit and rollback are observed through EF Core; a transaction committed on the raw
+`DbTransaction` or through `TransactionScope` is not
 
 ## Advanced Usage
 
