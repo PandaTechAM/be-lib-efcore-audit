@@ -4,7 +4,7 @@ namespace EFCore.Audit.Configurator;
 
 internal static class AuditTrailConfigurationLoader
 {
-    public static AuditTrailConfigurator LoadFromAssemblies(params Assembly[] assemblies)
+    public static AuditTrailConfigurator LoadFromAssemblies(AuditTrailOptions options, params Assembly[] assemblies)
     {
         var configurator = new AuditTrailConfigurator();
 
@@ -39,6 +39,14 @@ internal static class AuditTrailConfigurationLoader
                 var entityConfig = configuratorInstance.Build();
                 configurator.AddEntityConfiguration(entityType, entityConfig);
             }
+        }
+
+        foreach (var (entityType, entityConfig) in configurator.GetAllConfigurations())
+        {
+            entityConfig.SoftDeleteMarker ??= options.SoftDeleteMarkers
+                .Where(x => x.BaseType.IsAssignableFrom(entityType))
+                .Select(x => x.Marker)
+                .FirstOrDefault();
         }
 
         return configurator;

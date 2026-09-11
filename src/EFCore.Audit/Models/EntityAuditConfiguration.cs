@@ -12,6 +12,12 @@ public class EntityAuditConfiguration
     /// <summary>Row-level read permission required to view entries for this entity.</summary>
     public object? PermissionToRead { get; set; }
 
+    /// <summary>
+    ///     Property value that marks the entity as deleted; an update that sets it is audited as a delete. Null when the
+    ///     entity is only ever removed with a DELETE.
+    /// </summary>
+    public SoftDeleteMarker? SoftDeleteMarker { get; set; }
+
     /// <summary>Per-property audit configuration keyed by property name.</summary>
     public Dictionary<string, PropertyAuditConfiguration> Properties { get; } = new();
 }

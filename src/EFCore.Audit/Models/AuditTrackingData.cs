@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.ChangeTracking;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace EFCore.Audit.Models;
 
@@ -25,4 +26,10 @@ public class AuditedEntity
 
     /// <summary>Property values after the change.</summary>
     public Dictionary<string, object?> PropertyCurrentValues { get; set; } = [];
+
+    /// <summary>EF Core state of the entry when the save started.</summary>
+    internal EntityState CapturedState { get; init; }
+
+    /// <summary>Properties EF Core marked as modified when the save started.</summary>
+    internal HashSet<string> ModifiedProperties { get; } = [];
 }
